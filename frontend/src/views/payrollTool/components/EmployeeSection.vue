@@ -2,14 +2,32 @@
   <n-card title="員工管理">
     <n-space vertical :size="16">
       <n-space align="center" wrap>
+        <n-input v-model:value="form.code" placeholder="員工代碼" style="width: 180px" />
+        <n-input v-model:value="form.name" placeholder="員工姓名" style="width: 180px" />
+        <n-input v-model:value="form.phone" placeholder="電話" style="width: 180px" />
+        <n-select
+          v-model:value="form.status"
+          :options="statusOptions"
+          style="width: 140px"
+        />
+        <n-button type="primary" :loading="creating" @click="handleCreate">新增員工</n-button>
+      </n-space>
+
+      <n-space align="center" wrap>
         <n-input
-          v-model:value="keyword"
-          placeholder="請輸入員工代碼或中文姓名"
+          v-model:value="filters.keyword"
+          placeholder="搜尋代碼、姓名或電話"
           clearable
           style="width: 320px"
-          @keyup.enter="handleSearch" />
-        <n-button type="primary" :loading="loading" @click="handleSearch"> 搜尋 </n-button>
-        <n-button :disabled="loading" @click="handleReset"> 重設 </n-button>
+          @keyup.enter="handleSearch"
+        />
+        <n-select
+          v-model:value="filters.status"
+          :options="filterStatusOptions"
+          style="width: 160px"
+        />
+        <n-button type="primary" :loading="loading" @click="handleSearch">查詢</n-button>
+        <n-button :disabled="loading || creating" @click="handleReset">重設</n-button>
       </n-space>
 
       <n-alert v-if="errorMessage" type="error" closable @close="errorMessage = ''">
@@ -23,34 +41,67 @@
         :bordered="false"
         :pagination="false"
         :single-line="false"
-        empty-text="目前沒有員工資料" />
+        empty-text="目前沒有員工資料"
+      />
     </n-space>
   </n-card>
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, ref } from 'vue';
-import { http } from '@/api/http';
-import { NTag, type DataTableColumns } from 'naive-ui';
+import { h, onMounted, reactive, ref } from 'vue';
+import type { AxiosError } from 'axios';
+import { NTag, type DataTableColumns, type SelectOption } from 'naive-ui';
 
-import type { Employee, EmployeeSearchParams, ApiListResponse } from '@/types/index';
+import { createEmployee, getEmployees } from '@/api/employee';
+import type {
+  ApiMessageResponse,
+  Employee,
+  EmployeeSearchParams,
+  EmployeeStatus,
+} from '@/types';
 
-const keyword = ref<EmployeeSearchParams['keyword']>('');
 const loading = ref(false);
+const creating = ref(false);
 const errorMessage = ref('');
 const employees = ref<Employee[]>([]);
 
+const form = reactive({
+  code: '',
+  name: '',
+  phone: '',
+  status: 'active' as EmployeeStatus,
+});
+
+const filters = reactive<EmployeeSearchParams>({
+  keyword: '',
+  status: '',
+});
+
+const statusOptions: SelectOption[] = [
+  { label: 'active', value: 'active' },
+  { label: 'inactive', value: 'inactive' },
+];
+
+const filterStatusOptions: SelectOption[] = [
+  { label: '全部狀態', value: '' },
+  ...statusOptions,
+];
+
 const columns: DataTableColumns<Employee> = [
   {
+    title: 'ID',
+    key: 'id',
+  },
+  {
     title: '員工代碼',
-    key: 'employeeCode',
+    key: 'code',
   },
   {
-    title: '中文姓名',
-    key: 'chineseName',
+    title: '員工姓名',
+    key: 'name',
   },
   {
-    title: '手機',
+    title: '電話',
     key: 'phone',
   },
   {
@@ -66,7 +117,7 @@ const columns: DataTableColumns<Employee> = [
           bordered: false,
         },
         {
-          default: () => (isActive ? '啟用' : '停用'),
+          default: () => (isActive ? 'active' : 'inactive'),
         },
       );
     },
@@ -80,31 +131,63 @@ const fetchEmployees = async () => {
   try {
     const params: Partial<EmployeeSearchParams> = {};
 
-    if (keyword.value.trim()) {
-      params.keyword = keyword.value.trim();
+    if (filters.keyword.trim()) {
+      params.keyword = filters.keyword.trim();
     }
 
-    const { data } = await http.get<ApiListResponse<Employee>>('/api/employees', {
-      params,
-    });
+    if (filters.status) {
+      params.status = filters.status;
+    }
 
+    const data = await getEmployees(params);
     employees.value = data.items;
   } catch (error) {
     employees.value = [];
-    errorMessage.value = '查詢員工資料失敗，請稍後再試。';
+    errorMessage.value = '載入員工資料失敗';
     console.error(error);
   } finally {
     loading.value = false;
   }
 };
 
+const resetCreateForm = () => {
+  form.code = '';
+  form.name = '';
+  form.phone = '';
+  form.status = 'active';
+};
+
+const handleCreate = async () => {
+  creating.value = true;
+  errorMessage.value = '';
+
+  try {
+    await createEmployee({
+      code: form.code.trim(),
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      status: form.status,
+    });
+
+    resetCreateForm();
+    await fetchEmployees();
+  } catch (error) {
+    const axiosError = error as AxiosError<ApiMessageResponse>;
+    errorMessage.value = axiosError.response?.data?.message ?? '新增員工失敗';
+    console.error(error);
+  } finally {
+    creating.value = false;
+  }
+};
+
 const handleSearch = () => {
-  keyword.value = keyword.value.trim();
+  filters.keyword = filters.keyword.trim();
   void fetchEmployees();
 };
 
 const handleReset = () => {
-  keyword.value = '';
+  filters.keyword = '';
+  filters.status = '';
   void fetchEmployees();
 };
 

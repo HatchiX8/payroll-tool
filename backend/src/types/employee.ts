@@ -1,17 +1,14 @@
 export type EmployeeStatus = 'active' | 'inactive';
 
 export interface Employee {
-  id: string;
-  userNo: string;
-  employeeCode: string;
-  chineseName: string;
-  mobile: string;
-  note: string | null;
+  id: number;
+  code: string;
+  name: string;
+  phone: string;
   status: EmployeeStatus;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface EmployeeSearchParams {
   keyword: string;
+  status?: EmployeeStatus | '';
 }

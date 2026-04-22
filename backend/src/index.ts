@@ -1,34 +1,16 @@
 import express from 'express';
 import cors from 'cors';
+import { employeeRouter } from './modules/employee/employee';
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/employees', employeeRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ message: 'ok' });
-});
-
-// 模擬員工資料 API
-app.get('/api/employees', (req, res) => {
-  const keyword = String(req.query.keyword ?? '').trim();
-
-  const employees = [
-    { employeeCode: 'E001', chineseName: '王小明', phone: '0912345678', status: 'active' },
-    { employeeCode: 'E002', chineseName: '李小華', phone: '0922333444', status: 'inactive' },
-  ];
-
-  const filteredEmployees = !keyword
-    ? employees
-    : employees.filter((employee) => {
-        return employee.employeeCode.includes(keyword) || employee.chineseName.includes(keyword);
-      });
-
-  return res.json({
-    items: filteredEmployees,
-  });
 });
 
 app.get('/api/attendance', (req, res) => {
@@ -37,15 +19,15 @@ app.get('/api/attendance', (req, res) => {
   const attendanceList = [
     {
       employeeCode: 'E001',
-      chineseName: '王小明',
-      siteName: '台北場',
+      employeeName: 'Amy',
+      siteName: 'Site A',
       yearMonth: '2026-04',
       totalHours: 160,
     },
     {
       employeeCode: 'E002',
-      chineseName: '李小華',
-      siteName: '高雄場',
+      employeeName: 'Bob',
+      siteName: 'Site B',
       yearMonth: '2026-03',
       totalHours: 152.5,
     },
@@ -67,9 +49,9 @@ app.get('/api/hourly-rates', (req, res) => {
     {
       id: 'HR001',
       employeeCode: 'E001',
-      employeeName: '王小明',
+      employeeName: 'Amy',
       siteCode: 'A',
-      siteName: '案場A',
+      siteName: 'Site A',
       hourlyRate: 190,
       effectiveDate: '2026-04-01',
       note: null,
@@ -79,12 +61,12 @@ app.get('/api/hourly-rates', (req, res) => {
     {
       id: 'HR002',
       employeeCode: 'E002',
-      employeeName: '李小華',
+      employeeName: 'Bob',
       siteCode: 'B',
-      siteName: '案場B',
+      siteName: 'Site B',
       hourlyRate: 200,
       effectiveDate: '2026-04-01',
-      note: '夜班',
+      note: 'adjusted',
       createdAt: '2026-04-21T12:00:00.000Z',
       updatedAt: '2026-04-21T12:00:00.000Z',
     },
@@ -113,7 +95,7 @@ app.get('/api/payroll', (req, res) => {
       id: 'PR001',
       yearMonth: '2026-04',
       employeeCode: 'E001',
-      employeeName: '王小明',
+      employeeName: 'Amy',
       grossAmount: 30400,
       baseSalary: 28590,
       overtimePay: 1810,
@@ -126,7 +108,7 @@ app.get('/api/payroll', (req, res) => {
       id: 'PR002',
       yearMonth: '2026-04',
       employeeCode: 'E002',
-      employeeName: '李小華',
+      employeeName: 'Bob',
       grossAmount: 27000,
       baseSalary: 28590,
       overtimePay: 0,
@@ -150,19 +132,17 @@ app.post('/api/payroll/calculate', (req, res) => {
   const yearMonth = String(req.body.yearMonth ?? '').trim();
 
   return res.json({
-    message: yearMonth ? `${yearMonth} 薪資計算完成` : '薪資計算完成',
+    message: yearMonth ? `${yearMonth} payroll calculated` : 'payroll calculated',
   });
 });
 
-app.get('/api/report', (req, res) => {
-  const { startMonth, endMonth } = req.query;
-
+app.get('/api/report', (_req, res) => {
   const data = [
     {
       id: 'R001',
       yearMonth: '2026-04',
       employeeCode: 'E001',
-      employeeName: '王小明',
+      employeeName: 'Amy',
       baseSalary: 28590,
       overtimePay: 2000,
       extendedOvertimePay: 0,

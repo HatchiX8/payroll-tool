@@ -2,6 +2,7 @@
   <EmployeeSection />
   <AttendanceSection />
   <HourlyRateSection />
+
   <PayrollSection />
   <ReportSection />
 </template>
