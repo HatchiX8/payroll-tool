@@ -24,6 +24,23 @@
         {{ errorMessage }}
       </n-alert>
 
+      <n-alert v-if="calculateResult" type="success" closable @close="calculateResult = null">
+        計算完成：新增 {{ calculateResult.calculatedCount }} 筆，略過
+        {{ calculateResult.skippedCount }} 筆，{{ calculateResult.message }}
+      </n-alert>
+
+      <n-card
+        v-if="calculateResult && calculateResult.skippedItems.length > 0"
+        size="small"
+        title="略過清單"
+      >
+        <n-space vertical :size="8">
+          <div v-for="item in calculateResult.skippedItems" :key="`${item.employeeCode}-${item.reason}`">
+            {{ item.employeeCode }} / {{ item.employeeName }} / {{ item.reason }}
+          </div>
+        </n-space>
+      </n-card>
+
       <n-grid :cols="2" :x-gap="12" responsive="screen">
         <n-grid-item>
           <n-card size="small">
@@ -52,19 +69,27 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import type { AxiosError } from 'axios';
 import type { DataTableColumns } from 'naive-ui';
 
-import { http } from '@/api/http';
-import type { ApiListResponse } from '@/types/apiTypes';
-import type { PayrollResult, PayrollSearchParams } from '@/types/payrollResult';
+import { calculatePayroll, getPayrollResults } from '@/api/payroll';
+import type {
+  ApiMessageResponse,
+  PayrollCalculationResult,
+  PayrollResult,
+  PayrollSearchParams,
+} from '@/types';
 
 const yearMonth = ref<PayrollSearchParams['yearMonth']>('');
 const loading = ref(false);
 const calculating = ref(false);
 const errorMessage = ref('');
+const calculateResult = ref<PayrollCalculationResult | null>(null);
 const payrollResults = ref<PayrollResult[]>([]);
 
 const formatAmount = (value: number) => value.toLocaleString();
+const normalizeYearMonth = (value: string) => value.trim().replace(/\D/g, '');
+const isValidYearMonth = (value: string) => /^\d{6}$/.test(value);
 
 const columns: DataTableColumns<PayrollResult> = [
   {
@@ -136,15 +161,13 @@ const fetchPayrollResults = async () => {
 
   try {
     const params: Partial<PayrollSearchParams> = {};
+    const normalizedYearMonth = normalizeYearMonth(yearMonth.value);
 
-    if (yearMonth.value.trim()) {
-      params.yearMonth = yearMonth.value.trim();
+    if (normalizedYearMonth) {
+      params.yearMonth = normalizedYearMonth;
     }
 
-    const { data } = await http.get<ApiListResponse<PayrollResult>>('/api/payroll', {
-      params,
-    });
-
+    const data = await getPayrollResults(params);
     payrollResults.value = data.items;
   } catch (error) {
     payrollResults.value = [];
@@ -156,25 +179,44 @@ const fetchPayrollResults = async () => {
 };
 
 const handleSearch = () => {
-  yearMonth.value = yearMonth.value.trim();
+  yearMonth.value = normalizeYearMonth(yearMonth.value);
+
+  if (yearMonth.value && !isValidYearMonth(yearMonth.value)) {
+    errorMessage.value = '年月格式錯誤，請輸入 YYYYMM 或 YYYY-MM';
+    payrollResults.value = [];
+    return;
+  }
+
   void fetchPayrollResults();
 };
 
 const handleCalculate = async () => {
+  const normalizedYearMonth = normalizeYearMonth(yearMonth.value);
+
+  if (!normalizedYearMonth) {
+    errorMessage.value = '請先輸入年月後再執行薪資計算';
+    return;
+  }
+
+  if (!isValidYearMonth(normalizedYearMonth)) {
+    errorMessage.value = '年月格式錯誤，請輸入 YYYYMM 或 YYYY-MM';
+    return;
+  }
+
   calculating.value = true;
   errorMessage.value = '';
+  calculateResult.value = null;
 
   try {
-    const payload: Partial<PayrollSearchParams> = {};
-
-    if (yearMonth.value.trim()) {
-      payload.yearMonth = yearMonth.value.trim();
-    }
-
-    await http.post('/api/payroll/calculate', payload);
+    yearMonth.value = normalizedYearMonth;
+    const result = await calculatePayroll({
+      yearMonth: normalizedYearMonth,
+    });
+    calculateResult.value = result;
     await fetchPayrollResults();
   } catch (error) {
-    errorMessage.value = '執行薪資計算失敗，請稍後再試。';
+    const axiosError = error as AxiosError<ApiMessageResponse>;
+    errorMessage.value = axiosError.response?.data?.message ?? '執行薪資計算失敗，請稍後再試。';
     console.error(error);
   } finally {
     calculating.value = false;
@@ -183,6 +225,8 @@ const handleCalculate = async () => {
 
 const handleReset = () => {
   yearMonth.value = '';
+  errorMessage.value = '';
+  calculateResult.value = null;
   void fetchPayrollResults();
 };
 

@@ -1,3 +1,3 @@
-import Database from 'better-sqlite3'
+import Database from 'better-sqlite3';
 
-export const db: Database.Database = new Database('./data/payroll.db')
+export const db: Database.Database = new Database('./src/db/payroll.db');

@@ -1,3 +1,13 @@
+export interface AttendanceImportRow {
+  yearMonth: string;
+  siteCode: string;
+  siteName: string;
+  employeeName: string;
+  workDate: string;
+  shiftCode: string | null;
+  hours: number | null;
+}
+
 export interface AttendanceRecord {
   id: string;
   yearMonth: string;
@@ -14,4 +24,10 @@ export interface AttendanceRecord {
 
 export interface AttendanceSearchParams {
   yearMonth: string;
+}
+
+export interface AttendanceImportResult {
+  insertedCount: number;
+  skippedCount: number;
+  message: string;
 }

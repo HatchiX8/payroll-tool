@@ -1,8 +1,8 @@
 <template>
   <EmployeeSection />
   <AttendanceSection />
-  <HourlyRateSection />
 
+  <HourlyRateSection />
   <PayrollSection />
   <ReportSection />
 </template>

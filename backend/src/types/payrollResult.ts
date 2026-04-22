@@ -15,3 +15,16 @@ export interface PayrollResult {
 export interface PayrollSearchParams {
   yearMonth: string;
 }
+
+export interface PayrollSkippedItem {
+  employeeCode: string;
+  employeeName: string;
+  reason: string;
+}
+
+export interface PayrollCalculationResult {
+  calculatedCount: number;
+  skippedCount: number;
+  message: string;
+  skippedItems: PayrollSkippedItem[];
+}
