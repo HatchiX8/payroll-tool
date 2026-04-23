@@ -23,7 +23,6 @@ export interface HourlyRateImportResult {
 
 export interface CreateSiteHourlyRatePayload {
   employeeCode: string;
-  employeeName: string;
   siteCode: string;
   siteName: string;
   hourlyRate: number;
@@ -33,7 +32,6 @@ export interface CreateSiteHourlyRatePayload {
 
 export interface UpdateSiteHourlyRatePayload {
   employeeCode: string;
-  employeeName: string;
   siteCode: string;
   siteName: string;
   hourlyRate: number;

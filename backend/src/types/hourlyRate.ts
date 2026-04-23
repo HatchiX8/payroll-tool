@@ -17,7 +17,6 @@ export interface SiteHourlyRateSearchParams {
 
 export interface CreateSiteHourlyRateInput {
   employeeCode: string;
-  employeeName: string;
   siteCode: string;
   siteName: string;
   hourlyRate: number;
@@ -27,7 +26,6 @@ export interface CreateSiteHourlyRateInput {
 
 export interface UpdateSiteHourlyRateInput {
   employeeCode: string;
-  employeeName: string;
   siteCode: string;
   siteName: string;
   hourlyRate: number;

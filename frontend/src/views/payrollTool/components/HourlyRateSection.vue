@@ -59,7 +59,7 @@
               <n-input v-model:value="form.employeeCode" placeholder="員工工號" />
             </n-grid-item>
             <n-grid-item>
-              <n-input v-model:value="form.employeeName" placeholder="員工姓名" />
+              <n-input v-model:value="form.employeeName" placeholder="員工姓名" readonly />
             </n-grid-item>
             <n-grid-item>
               <n-input v-model:value="form.siteCode" placeholder="工作點代碼" />
@@ -100,10 +100,11 @@
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, reactive, ref } from 'vue';
+import { h, onMounted, reactive, ref, watch } from 'vue';
 import type { AxiosError } from 'axios';
 import { NButton, type DataTableColumns } from 'naive-ui';
 
+import { getEmployees } from '@/api/employee';
 import {
   createHourlyRate,
   getHourlyRates,
@@ -113,10 +114,20 @@ import {
 import type {
   ApiMessageResponse,
   CreateSiteHourlyRatePayload,
+  Employee,
   HourlyRateImportResult,
   SiteHourlyRate,
   SiteHourlyRateSearchParams,
 } from '@/types';
+
+const props = withDefaults(
+  defineProps<{
+    refreshKey?: number;
+  }>(),
+  {
+    refreshKey: 0,
+  },
+);
 
 const keyword = ref<SiteHourlyRateSearchParams['keyword']>('');
 const loading = ref(false);
@@ -127,6 +138,7 @@ const importErrorMessage = ref('');
 const formErrorMessage = ref('');
 const importResult = ref<HourlyRateImportResult | null>(null);
 const hourlyRates = ref<SiteHourlyRate[]>([]);
+const employees = ref<Employee[]>([]);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const showFormModal = ref(false);
 const editingId = ref<number | null>(null);
@@ -142,6 +154,13 @@ const form = reactive({
 });
 
 const isEditMode = ref(false);
+
+const syncEmployeeName = () => {
+  const employeeCode = form.employeeCode.trim();
+  const matchedEmployee = employees.value.find((employee) => employee.code === employeeCode);
+
+  form.employeeName = matchedEmployee?.name ?? '';
+};
 
 const columns: DataTableColumns<SiteHourlyRate> = [
   {
@@ -215,6 +234,18 @@ const fetchHourlyRates = async () => {
   }
 };
 
+const fetchEmployees = async () => {
+  try {
+    const data = await getEmployees({});
+    employees.value = data.items;
+    syncEmployeeName();
+  } catch (error) {
+    employees.value = [];
+    form.employeeName = '';
+    console.error(error);
+  }
+};
+
 const resetForm = () => {
   form.employeeCode = '';
   form.employeeName = '';
@@ -249,14 +280,20 @@ const openEditModal = (row: SiteHourlyRate) => {
 
 const buildPayload = (): CreateSiteHourlyRatePayload | null => {
   const employeeCode = form.employeeCode.trim();
-  const employeeName = form.employeeName.trim();
   const siteCode = form.siteCode.trim();
   const siteName = form.siteName.trim();
   const effectiveDate = form.effectiveDate.trim();
   const hourlyRate = form.hourlyRate;
+  const matchedEmployee = employees.value.find((employee) => employee.code === employeeCode);
 
-  if (!employeeCode || !employeeName || !siteCode || !siteName || !effectiveDate) {
+  if (!employeeCode || !siteCode || !siteName || !effectiveDate) {
     formErrorMessage.value = '請完整填寫必填欄位';
+    return null;
+  }
+
+  if (!matchedEmployee) {
+    formErrorMessage.value = '員工工號不存在於員工清單';
+    form.employeeName = '';
     return null;
   }
 
@@ -265,9 +302,10 @@ const buildPayload = (): CreateSiteHourlyRatePayload | null => {
     return null;
   }
 
+  form.employeeName = matchedEmployee.name;
+
   return {
     employeeCode,
-    employeeName,
     siteCode,
     siteName,
     hourlyRate,
@@ -360,6 +398,22 @@ const handleSubmitForm = async () => {
 };
 
 onMounted(() => {
+  void fetchEmployees();
   void fetchHourlyRates();
 });
+
+watch(
+  () => form.employeeCode,
+  () => {
+    syncEmployeeName();
+  },
+);
+
+watch(
+  () => props.refreshKey,
+  () => {
+    void fetchEmployees();
+    void fetchHourlyRates();
+  },
+);
 </script>

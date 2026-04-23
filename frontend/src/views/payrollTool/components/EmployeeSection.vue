@@ -112,6 +112,10 @@ import type {
   UpdateEmployeePayload,
 } from '@/types';
 
+const emit = defineEmits<{
+  (event: 'employees-changed'): void;
+}>();
+
 const loading = ref(false);
 const creating = ref(false);
 const importing = ref(false);
@@ -239,9 +243,7 @@ const fetchEmployees = async () => {
       params.keyword = filters.keyword.trim();
     }
 
-    if (filters.status) {
-      params.status = filters.status;
-    }
+    params.status = filters.status;
 
     const data = await getEmployees(params);
     employees.value = data.items;
@@ -313,6 +315,7 @@ const handleCreate = async () => {
 
     resetCreateForm();
     await fetchEmployees();
+    emit('employees-changed');
     successMessage.value = '新增員工成功';
   } catch (error) {
     const axiosError = error as AxiosError<ApiMessageResponse>;
@@ -362,6 +365,7 @@ const handleUpdateEmployee = async () => {
     editingEmployeeId.value = null;
     resetEditForm();
     await fetchEmployees();
+    emit('employees-changed');
     successMessage.value = '更新員工成功';
   } catch (error) {
     const axiosError = error as AxiosError<ApiMessageResponse>;
@@ -380,6 +384,7 @@ const handleToggleStatus = async (id: number, status: EmployeeStatus) => {
   try {
     await updateEmployeeStatus(id, { status });
     await fetchEmployees();
+    emit('employees-changed');
     successMessage.value = `員工狀態已更新為 ${status}`;
   } catch (error) {
     const axiosError = error as AxiosError<ApiMessageResponse>;
@@ -409,6 +414,7 @@ const handleImport = async () => {
       fileInputRef.value.value = '';
     }
     await fetchEmployees();
+    emit('employees-changed');
   } catch (error) {
     const axiosError = error as AxiosError<ApiMessageResponse>;
     importErrorMessage.value = axiosError.response?.data?.message ?? '匯入員工資料失敗';

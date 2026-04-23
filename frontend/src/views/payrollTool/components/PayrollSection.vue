@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { AxiosError } from 'axios';
 import type { DataTableColumns } from 'naive-ui';
 
@@ -79,6 +79,15 @@ import type {
   PayrollResult,
   PayrollSearchParams,
 } from '@/types';
+
+const props = withDefaults(
+  defineProps<{
+    refreshKey?: number;
+  }>(),
+  {
+    refreshKey: 0,
+  },
+);
 
 const yearMonth = ref<PayrollSearchParams['yearMonth']>('');
 const loading = ref(false);
@@ -233,4 +242,11 @@ const handleReset = () => {
 onMounted(() => {
   void fetchPayrollResults();
 });
+
+watch(
+  () => props.refreshKey,
+  () => {
+    void fetchPayrollResults();
+  },
+);
 </script>

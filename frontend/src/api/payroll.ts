@@ -1,3 +1,5 @@
+import type { AxiosResponse } from 'axios';
+
 import { http } from './http';
 
 import type {
@@ -19,4 +21,14 @@ export const calculatePayroll = async (payload: PayrollSearchParams) => {
   const { data } = await http.post<PayrollCalculationResult>('/api/payroll/calculate', payload);
 
   return data;
+};
+
+export const exportPayrollReport = async (params: {
+  startYearMonth: string;
+  endYearMonth: string;
+}): Promise<AxiosResponse<Blob>> => {
+  return http.get('/api/payroll/report', {
+    params,
+    responseType: 'blob',
+  });
 };

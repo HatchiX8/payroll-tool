@@ -26,7 +26,6 @@ type SearchHourlyRatesInput = {
 };
 type ValidateHourlyRateInput = {
   employeeCode: unknown;
-  employeeName: unknown;
   siteCode: unknown;
   siteName: unknown;
   hourlyRate: unknown;
@@ -148,24 +147,41 @@ function mapHourlyRateRow(row: HourlyRateRow): SiteHourlyRate {
   };
 }
 
+function findActiveEmployeeByCode(code: string) {
+  return db
+    .prepare(
+      `
+        SELECT code, name
+        FROM employees
+        WHERE code = ? AND status = 'active'
+      `,
+    )
+    .get(code) as { code: string; name: string } | undefined;
+}
+
 function validateHourlyRateInput(
   input: CreateSiteHourlyRateInput | UpdateSiteHourlyRateInput | ValidateHourlyRateInput,
 ) {
   const employeeCode = normalizeText(input.employeeCode);
-  const employeeName = normalizeText(input.employeeName);
   const siteCode = normalizeText(input.siteCode);
   const siteName = normalizeText(input.siteName);
   const hourlyRate = parseHourlyRateValue(input.hourlyRate);
   const effectiveDate = normalizeDateString(input.effectiveDate);
   const note = normalizeOptionalNote(input.note);
 
-  if (!employeeCode || !employeeName || !siteCode || !siteName) {
+  if (!employeeCode || !siteCode || !siteName) {
     throw new Error('required fields are missing');
+  }
+
+  const employee = findActiveEmployeeByCode(employeeCode);
+
+  if (!employee) {
+    throw new Error('employee not found');
   }
 
   return {
     employeeCode,
-    employeeName,
+    employeeName: employee.name,
     siteCode,
     siteName,
     hourlyRate,
@@ -503,7 +519,6 @@ export function importHourlyRatesFromExcel(file: Express.Multer.File): HourlyRat
     try {
       const validated = validateHourlyRateInput({
         employeeCode: row.employeeCode,
-        employeeName: row.employeeName,
         siteCode: row.siteCode,
         siteName: row.siteName,
         hourlyRate: row.hourlyRate,
@@ -601,6 +616,7 @@ hourlyRateRouter.post('/', (req, res) => {
     const message = error instanceof Error ? error.message : 'failed to create hourly rate';
     const statusCode =
       message === 'required fields are missing' ||
+      message === 'employee not found' ||
       message === 'invalid hourly_rate' ||
       message === 'invalid effective_date' ||
       message === 'hourly rate already exists'
@@ -632,6 +648,7 @@ hourlyRateRouter.put('/:id', (req, res) => {
     const message = error instanceof Error ? error.message : 'failed to update hourly rate';
     const statusCode =
       message === 'required fields are missing' ||
+      message === 'employee not found' ||
       message === 'invalid hourly_rate' ||
       message === 'invalid effective_date' ||
       message === 'hourly rate already exists'

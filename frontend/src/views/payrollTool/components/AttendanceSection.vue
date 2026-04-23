@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import type { AxiosError } from 'axios';
 import type { DataTableColumns } from 'naive-ui';
 
@@ -65,6 +65,15 @@ import type {
   AttendanceRecord,
   AttendanceSearchParams,
 } from '@/types/index';
+
+const props = withDefaults(
+  defineProps<{
+    refreshKey?: number;
+  }>(),
+  {
+    refreshKey: 0,
+  },
+);
 
 const yearMonth = ref<AttendanceSearchParams['yearMonth']>('');
 const loading = ref(false);
@@ -207,4 +216,12 @@ onMounted(() => {
   void fetchEmployeeRequirement();
   void fetchAttendance();
 });
+
+watch(
+  () => props.refreshKey,
+  () => {
+    void fetchEmployeeRequirement();
+    void fetchAttendance();
+  },
+);
 </script>

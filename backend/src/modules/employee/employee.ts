@@ -78,6 +78,31 @@ function getEmployeeById(id: number) {
     .get(id) as Employee | undefined;
 }
 
+function syncEmployeeReferences(previousEmployee: Employee, nextEmployee: Employee) {
+  const hasCodeChanged = previousEmployee.code !== nextEmployee.code;
+  const hasNameChanged = previousEmployee.name !== nextEmployee.name;
+
+  if (!hasCodeChanged && !hasNameChanged) {
+    return;
+  }
+
+  db.prepare(
+    `
+      UPDATE hourly_rates
+      SET employee_code = ?, employee_name = ?, updated_at = datetime('now')
+      WHERE employee_code = ?
+    `,
+  ).run(nextEmployee.code, nextEmployee.name, previousEmployee.code);
+
+  db.prepare(
+    `
+      UPDATE payroll_results
+      SET employee_code = ?, employee_name = ?
+      WHERE employee_id = ?
+    `,
+  ).run(nextEmployee.code, nextEmployee.name, nextEmployee.id);
+}
+
 function isNumericSequence(value: string) {
   return /^\d+$/.test(value);
 }
@@ -123,7 +148,8 @@ export function createEmployee(input: CreateEmployeeInput) {
 
 export function searchEmployees(input: SearchEmployeesInput = {}) {
   const keyword = normalizeText(input.keyword);
-  const status = parseStatus(input.status) || 'active';
+  const status = parseStatus(input.status);
+  const shouldFilterByStatus = input.status === undefined ? true : status !== '';
 
   const conditions: string[] = [];
   const params: string[] = [];
@@ -133,8 +159,10 @@ export function searchEmployees(input: SearchEmployeesInput = {}) {
     params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
   }
 
-  conditions.push('status = ?');
-  params.push(status);
+  if (shouldFilterByStatus) {
+    conditions.push('status = ?');
+    params.push(status || 'active');
+  }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -189,6 +217,8 @@ export function updateEmployee(id: number, input: UpdateEmployeeInput) {
   if (!employee) {
     throw new Error('employee not found');
   }
+
+  syncEmployeeReferences(existingEmployee, employee);
 
   return employee;
 }
