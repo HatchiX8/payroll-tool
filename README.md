@@ -134,6 +134,10 @@
 ## 專案啟動方式
 
 ```bash
+# 下載專案
+git clone https://github.com/HatchiX8/payroll-tool
+cd payroll-tool
+
 # 安裝依賴
 npm run install:all
 
